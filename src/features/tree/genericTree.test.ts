@@ -45,49 +45,13 @@ const generateEmptyState = () => ({
   nodeMap: { },
 });
 
-function makeStoreAndSlice<T>(
-  createSlice,
-  name: string = 'test',
-  initialState: TreeState<T>,
-  reducers?: ValidateSliceCaseReducers<TreeState<T>, Reducers>
-) {
-  const slice = createSlice({
-    name,
-    initialState,
-    reducers,
-  });
-
-  const store = configureStore({
-    reducer: slice.reducer
-  });
-  return { slice, store };
-}
-
-function makeEmptyGenericTree() {
-  const { slice: genericTree, store } =
-      makeStoreAndSlice(
-        createGenericSlice,
-        'empty tree',
-        generateEmptyState()
-      );
-  return { genericTree, store };
-}
-
-function makeCommonGenericTree() {
-  const { slice: genericTree, store } =
-      makeStoreAndSlice(
-        createGenericSlice,
-        'common tree',
-        generateCommonState()
-      );
-  return { genericTree, store };
-}
-
 describe('generic tree', () => {
+  const genericTree = createGenericSlice({
+    name: 'genericTree',
+  });
   describe('selectors', () => {
     describe('empty state', () => {
-      const { genericTree, store } = makeEmptyGenericTree();
-      const state = store.getState();
+      const state = generateEmptyState();
       const someId: string = '0';
 
       it('select root', () => {
@@ -104,8 +68,7 @@ describe('generic tree', () => {
     });
 
     describe('initial state', () => {
-      const { genericTree, store } = makeCommonGenericTree();
-      const state = store.getState();
+      const state = generateCommonState();
 
       it('select root', () => {
         expect(selectRoot(state)).toEqual('0');
@@ -127,51 +90,57 @@ describe('generic tree', () => {
 
   describe('appendChild action', () => {
     describe('set root', () => {
-      const { genericTree, store } = makeEmptyGenericTree();
-
       it('should make the root with undefined parent', () => {
         const rootId = '0';
         const data = '1';
-        store.dispatch(genericTree.actions.appendChild({
+
+        // set root
+        const state = generateEmptyState();
+        genericTree.caseReducers.appendChild(state, genericTree.actions.appendChild({
           id: rootId,
           data
         }));
-        const state = store.getState();
+
         expect(selectRoot(state)).toEqual(rootId);
         expect(selectNode(state, rootId)).toEqual(data);
       });
 
       it('should replace root with new one', () => {
+        const rootId = '0';
+        const data = '1';
+
+        // make root node
+        const state = generateEmptyState();
+        genericTree.caseReducers.appendChild(state, genericTree.actions.appendChild({
+          id: rootId,
+          data
+        }));
+
+        // replace root with new one
         const newRootId = 'new-root';
-        store.dispatch(genericTree.actions.appendChild({
+        genericTree.caseReducers.appendChild(state, genericTree.actions.appendChild({
           id: newRootId,
           data: 'new root'
         }));
-        const state = store.getState();
+
         expect(selectRoot(state)).toEqual(newRootId);
       });
     });
 
     describe('having root, append child', () => {
-      var genericTree, store;
-      const rootId = '0';
-      const rootData = '0';
-
-      beforeEach(() => {
-        const { genericTree: _genericTree, store: _store } = makeCommonGenericTree();
-        genericTree = _genericTree;
-        store = _store; // ?
-      });
-
       it('should append child with valid parent id', () => {
         const id = 'childId';
         const data = 'childData';
-        store.dispatch(genericTree.actions.appendChild({
+
+        // get root and append child on it
+        const state = generateCommonState();
+        const rootId = selectRoot(state);
+        genericTree.caseReducers.appendChild(state, genericTree.actions.appendChild({
           parent: rootId,
           id,
           data
         }));
-        const state = store.getState();
+
         expect(selectNode(state, id)).toEqual(data);
         expect(state.parentMap[id]).toEqual(rootId);
         expect(selectChildren(state, rootId)).toEqual(['00', '01', id]);
